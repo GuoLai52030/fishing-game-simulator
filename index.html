@@ -1,0 +1,2016 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>绝不空军：钓鱼佬模拟器</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --primary-bg: #1a2f23; /* Deep Green */
+            --secondary-bg: #243e30;
+            --accent: #ff9800; /* Bright Orange */
+            --text-main: #e0e0e0;
+            --text-dim: #a0a0a0;
+            --danger: #ff5252;
+            --success: #69f0ae;
+            --discount: #ff4081;
+            --gold: #ffd700;
+            --silver: #c0c0c0;
+            --bronze: #cd7f32;
+        }
+
+        * { box-sizing: border-box; user-select: none; }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            color: var(--text-main);
+        }
+
+        #app {
+            width: 100%;
+            max-width: 480px;
+            height: 100%;
+            background-color: var(--primary-bg);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        /* Animations */
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.3s; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
+        
+        .slide-up-enter-active { transition: all 0.4s ease-out; }
+        .slide-up-enter-from { transform: translateY(20px); opacity: 0; }
+        
+        .toast-enter-active, .toast-leave-active { transition: all 0.5s ease; }
+        .toast-enter-from, .toast-leave-to { transform: translateY(-50px); opacity: 0; }
+
+        @keyframes blink-red {
+            0% { color: var(--text-main); }
+            50% { color: var(--danger); text-shadow: 0 0 5px var(--danger); }
+            100% { color: var(--text-main); }
+        }
+        .blink-danger { animation: blink-red 1s infinite; font-weight: bold; }
+
+        /* Typography */
+        h1, h2, h3 { margin: 0; font-weight: 600; }
+        .highlight { color: var(--accent); }
+        .stat-val { font-family: monospace; font-weight: bold; }
+
+        /* Layout Components */
+        .header {
+            padding: 15px;
+            background: rgba(0,0,0,0.2);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            border-bottom: 1px solid var(--secondary-bg);
+        }
+        .stat-col { display: flex; flex-direction: column; gap: 4px; }
+        .stat-row { display: flex; justify-content: space-between; font-size: 0.9rem; align-items: center; }
+        
+        .main-area {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            text-align: center;
+            /* Scroll Mask Effect */
+            mask-image: linear-gradient(to bottom, black 90%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, black 90%, transparent 100%);
+        }
+
+        .log-area {
+            height: 100px;
+            background: rgba(0,0,0,0.3);
+            margin: 10px;
+            padding: 10px;
+            overflow-y: auto;
+            font-size: 0.8rem;
+            text-align: left;
+            border-radius: 4px;
+        }
+        .log-item { margin-bottom: 4px; color: var(--text-dim); }
+        .log-item.new { color: var(--text-main); }
+
+        .controls {
+            padding: 20px;
+            background: var(--secondary-bg);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .action-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        /* Buttons */
+        .btn {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s, filter 0.1s;
+            width: 100%;
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn:disabled { filter: grayscale(1); opacity: 0.5; cursor: not-allowed; }
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--accent);
+            color: var(--accent);
+        }
+        .btn-small { padding: 8px 12px; font-size: 0.8rem; width: auto; flex: 1; }
+        
+        /* Categories */
+        .category-tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+            width: 100%;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+        .tab {
+            padding: 6px 12px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+        .tab.active {
+            background: var(--accent);
+            color: #000;
+            font-weight: bold;
+        }
+
+        /* Cards */
+        .card {
+            background: rgba(255,255,255,0.08); /* Slightly lighter */
+            border-radius: 12px; /* Rounded corners */
+            padding: 12px;
+            /* margin-bottom: 8px; Removed for grid gap */
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+            border: 1px solid rgba(255,255,255,0.05); /* Thin subtle border */
+            position: relative;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 10px;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2); /* Soft shadow */
+            transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+        }
+        .card:active { transform: scale(0.98); }
+        .card.selected { border-color: var(--accent); background: rgba(255,152,0,0.15); box-shadow: 0 0 15px rgba(255,152,0,0.2); }
+        
+        .shop-list {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            width: 100%;
+            padding-bottom: 120px; /* Increased padding */
+        }
+        @media (min-width: 450px) {
+            .shop-list { grid-template-columns: 1fr 1fr; }
+            .card { display: flex; flex-direction: column; text-align: center; height: 100%; align-items: center; }
+            .card-price { margin-top: auto; width: 100%; text-align: center; font-size: 1rem; }
+            .card-icon { font-size: 2.5rem; margin-bottom: 5px; }
+            .card-info { width: 100%; }
+        }
+
+        .card-icon { font-size: 1.5rem; }
+        .card-info { overflow: hidden; }
+        .card-name { font-weight: bold; font-size: 0.9rem; }
+        .card-desc { font-size: 0.7rem; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card-price { font-size: 0.8rem; color: var(--accent); text-align: right; }
+        
+        .discount-badge {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: var(--discount);
+            color: white;
+            font-size: 0.6rem;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-weight: bold;
+            transform: rotate(10deg);
+            z-index: 2; /* Ensure on top */
+        }
+
+        .event-img {
+            font-size: 4rem;
+            margin: 20px 0;
+            display: block;
+        }
+        
+        /* NPC Dialog */
+        .npc-dialog {
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 15px;
+            margin: 10px 0;
+            text-align: left;
+            border-left: 4px solid var(--accent);
+            position: relative;
+        }
+        .npc-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .npc-avatar {
+            font-size: 2rem;
+            background: #fff;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 2px solid var(--accent);
+        }
+        .npc-name {
+            font-weight: bold;
+            color: var(--accent);
+        }
+        .npc-text {
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            z-index: 100;
+        }
+        .modal {
+            background: var(--secondary-bg);
+            padding: 25px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 400px;
+            border: 1px solid var(--accent);
+            text-align: center;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        /* Achievement Toast */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            left: 0;
+            right: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: none;
+            z-index: 200;
+        }
+        .toast {
+            background: rgba(0,0,0,0.9);
+            border: 1px solid var(--gold);
+            color: var(--gold);
+            padding: 10px 20px;
+            border-radius: 50px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+        }
+        .toast.rare { border-color: var(--silver); color: var(--silver); box-shadow: 0 4px 15px rgba(192, 192, 192, 0.3); }
+        .toast.normal { border-color: var(--bronze); color: var(--bronze); box-shadow: 0 4px 15px rgba(205, 127, 50, 0.3); }
+
+        /* Trophy Room */
+        .trophy-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .trophy-item {
+            aspect-ratio: 1;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            filter: grayscale(1) opacity(0.3);
+            cursor: help;
+            position: relative;
+        }
+        .trophy-item.unlocked {
+            filter: none;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--accent);
+        }
+        .trophy-item.legend { border-color: var(--gold); box-shadow: 0 0 10px rgba(255,215,0,0.2); }
+        
+        /* License Poster */
+        .license-card {
+            background: #f4e4bc; /* Paper color */
+            color: #333;
+            padding: 20px;
+            border-radius: 10px;
+            position: relative;
+            text-align: left;
+            margin-top: 20px;
+            border: 4px double #5a4632;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden;
+        }
+        .license-header {
+            text-align: center;
+            border-bottom: 2px solid #5a4632;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .license-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #5a4632;
+            letter-spacing: 2px;
+        }
+        .license-body {
+            display: grid;
+            grid-template-columns: 80px 1fr;
+            gap: 15px;
+        }
+        .license-photo {
+            width: 80px;
+            height: 100px;
+            background: #ddd;
+            border: 1px solid #999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            flex-direction: column;
+        }
+        .license-info div { margin-bottom: 5px; font-size: 0.8rem; }
+        .license-label { font-weight: bold; color: #5a4632; }
+        .license-stamp {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            width: 80px;
+            height: 80px;
+            border: 3px solid #d32f2f;
+            border-radius: 50%;
+            color: #d32f2f;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            transform: rotate(-20deg);
+            font-size: 0.9rem;
+            text-align: center;
+            opacity: 0.8;
+        }
+
+        /* --- Scrollbar UI/UX Upgrade --- */
+        
+        /* 1. Custom Webkit Scrollbar */
+        /* Apply globally to all scrollbars including body */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(10, 30, 50, 0.4); /* Track: Deep Water Blue */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 152, 0, 0.6); /* Thumb: Orange (Matches --accent) */
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 152, 0, 0.9); /* Brighter on hover */
+        }
+        ::-webkit-scrollbar-corner {
+            background: transparent;
+        }
+
+        /* 2. Interaction & Mobile Optimization */
+        body {
+            overscroll-behavior: none; /* Prevent pull-to-refresh/rubber-banding */
+            scrollbar-color: rgba(255, 152, 0, 0.6) rgba(10, 30, 50, 0.4); /* Firefox */
+            scrollbar-width: thin;
+        }
+
+        /* Apply smooth scrolling and touch optimization to all scrollable areas */
+        .main-area, .log-area, .modal, .category-tabs, .trophy-grid, .shop-list {
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch; /* iOS Momentum Scrolling */
+            scrollbar-width: thin; /* Firefox Support */
+            scrollbar-color: rgba(255, 152, 0, 0.6) rgba(10, 30, 50, 0.4); /* Firefox Support */
+        }
+        
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <!-- Achievement Toasts -->
+    <div class="toast-container">
+        <transition-group name="toast">
+            <div v-for="toast in activeToasts" :key="toast.id" class="toast" :class="toast.rarity">
+                <span style="font-size: 1.2rem;">🏆</span>
+                <div>
+                    <div style="font-size: 0.8rem; font-weight: bold;">成就解锁</div>
+                    <div>{{ toast.name }}</div>
+                </div>
+            </div>
+        </transition-group>
+    </div>
+
+    <!-- Header Stats (Visible in Game) -->
+    <header class="header" v-if="state.phase === 'JOURNEY'">
+        <div class="stat-col">
+            <div class="stat-row"><span>体力</span> <span class="stat-val" :style="{color: state.stamina < 30 ? 'red' : ''}">{{ state.stamina }}</span></div>
+            <div class="stat-row"><span>心态</span> <span class="stat-val">{{ state.sanity }}</span></div>
+            <div class="stat-row"><span>时间</span> <span class="stat-val">{{ state.stage }}/{{ MAX_STAGES }}</span></div>
+        </div>
+        <div class="stat-col">
+            <div class="stat-row">
+                <span>资金</span>
+                <span class="stat-val" style="color: var(--gold);">${{ state.money }}</span>
+            </div>
+            <div class="stat-row">
+                <span>饵料</span> 
+                <span class="stat-val" :class="{'blink-danger': isLowBait}">
+                    {{ state.bait }}
+                    <span style="font-size: 0.8rem;">🥫</span>
+                </span>
+            </div>
+            <div class="stat-row">
+                <span>渔获</span> 
+                <span class="stat-val highlight">{{ state.catchWeight.toFixed(1) }}kg</span>
+            </div>
+            <div class="stat-row" v-if="state.maxFishWeight > 0">
+                <span style="font-size: 0.8rem; color: #ffd700;">最大</span>
+                <span class="stat-val" :style="{
+                    color: state.maxFishWeight > 5.0 ? '#ff4081' : '#ffd700',
+                    textShadow: state.maxFishWeight > 5.0 ? '0 0 5px #ff4081' : 'none',
+                    fontWeight: 'bold'
+                }">
+                    {{ state.maxFishWeight.toFixed(1) }}kg
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="main-area" :style="{justifyContent: state.phase === 'PREPARE' ? 'flex-start' : 'center'}">
+        
+        <!-- START SCREEN -->
+        <div v-if="state.phase === 'START'" class="slide-up">
+            <div style="font-size: 5rem; margin-bottom: 20px;">🎣</div>
+            <h1 style="font-size: 2rem; margin-bottom: 10px;">绝不空军</h1>
+            <p style="color: var(--text-dim);">钓鱼佬模拟器</p>
+            <div style="margin-top: 50px;">
+                <p>终极目标：钓到大鱼</p>
+                <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+                    <button class="btn" @click="startGame">开始钓鱼</button>
+                </div>
+                <button class="btn btn-outline" style="margin-top: 10px;" @click="showTrophyRoom = true">荣誉室 🏆</button>
+            </div>
+        </div>
+
+        <!-- PREPARE SCREEN -->
+        <div v-if="state.phase === 'PREPARE'" class="slide-up" style="width: 100%;">
+            <div style="position: sticky; top: 0; background: var(--primary-bg); z-index: 10; padding-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h2 style="font-size: 1.2rem;">渔具店</h2>
+                    <div style="text-align: right;">
+                        <div>资金: <span class="highlight">${{ state.money }}</span></div>
+                        <div style="font-size: 0.8rem;">背包: {{ state.inventory.length }}/7</div>
+                    </div>
+                </div>
+
+                <div class="category-tabs">
+                    <div 
+                        v-for="(label, key) in CATEGORIES" 
+                        :key="key" 
+                        class="tab" 
+                        :class="{active: activeTab === key}"
+                        @click="activeTab = key"
+                    >
+                        {{ label }}
+                    </div>
+                </div>
+
+                <!-- Stats Panel -->
+                <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 10px; font-size: 0.8rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px; color: var(--text-dim);">
+                        <span>当前配置状态</span>
+                        <span v-if="compatibilityWarning" class="blink-danger">!</span>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; text-align: center;">
+                        <div style="background: rgba(255,255,255,0.05); padding: 5px; border-radius: 4px;">
+                            <div style="color: #aaa;">负重</div>
+                            <div :style="{color: currentWeight > 10 ? 'red' : currentWeight > 8 ? 'orange' : 'var(--success)'}">
+                                {{ currentWeight.toFixed(1) }}/10kg
+                            </div>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.05); padding: 5px; border-radius: 4px;">
+                            <div style="color: #aaa;">拉力</div>
+                            <div style="color: var(--accent);">{{ currentStats.maxDrag > 99 ? '∞' : currentStats.maxDrag.toFixed(1) }}kg</div>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.05); padding: 5px; border-radius: 4px;">
+                            <div style="color: #aaa;">灵敏度</div>
+                            <div :style="{color: currentStats.sensitivity >= 20 ? 'var(--success)' : currentStats.sensitivity < 0 ? 'red' : 'white'}">
+                                {{ currentStats.sensitivity > 0 ? '+' : ''}}{{ currentStats.sensitivity }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div v-if="compatibilityWarning" style="margin-top: 5px; color: var(--danger); font-size: 0.75rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 5px;">
+                        {{ compatibilityWarning }}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="shop-list">
+                <div 
+                    v-for="item in filteredItems" 
+                    :key="item.id" 
+                    class="card"
+                    :class="{ selected: state.inventory.includes(item.id) }"
+                    @click="toggleItem(item)"
+                >
+                    <div class="card-icon">{{ item.icon }}</div>
+                    <div class="card-info">
+                        <div class="card-name">{{ item.name }}</div>
+                        <div class="card-desc">{{ item.desc }}</div>
+                        <div v-if="item.baitVal" style="font-size: 0.7rem; color: var(--success);">饵料值 +{{ item.baitVal }}</div>
+                    </div>
+                    <div class="card-price">
+                        <div v-if="isDiscounted(item.id)" style="color: var(--discount);">
+                            ${{ item.price / 2 }}
+                        </div>
+                        <div v-else>${{ item.price }}</div>
+                    </div>
+                    <div v-if="isDiscounted(item.id)" class="discount-badge">-50%</div>
+                </div>
+            </div>
+
+            <div style="position: fixed; bottom: 20px; left: 0; right: 0; padding: 20px; background: linear-gradient(transparent, var(--primary-bg) 20%); pointer-events: none; display: flex; justify-content: center;">
+                 <button class="btn" style="pointer-events: auto; max-width: 440px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);" @click="startJourney">
+                    出发 ({{ state.inventory.length }}/7)
+                </button>
+            </div>
+        </div>
+
+        <!-- JOURNEY SCREEN -->
+        <div v-if="state.phase === 'JOURNEY'" class="slide-up" key="journey">
+            <div class="event-img" v-if="!currentEvent?.npc">{{ currentEvent?.icon || '❓' }}</div>
+            
+            <!-- NPC Dialog -->
+            <div v-if="currentEvent?.npc" class="npc-dialog">
+                <div v-if="currentEvent.atmosphere_intro" style="font-style: italic; color: var(--text-dim); margin-bottom: 10px; font-size: 0.85rem;">
+                    {{ currentEvent.atmosphere_intro }}
+                </div>
+                <div class="npc-header">
+                    <div class="npc-avatar">{{ currentEvent.npc.avatar }}</div>
+                    <div class="npc-name">{{ currentEvent.npc.name }}</div>
+                </div>
+                <div class="npc-text">{{ currentEvent.text }}</div>
+            </div>
+            <div v-else>
+                <h2 style="margin-bottom: 15px;">{{ currentEvent?.title }}</h2>
+                <p style="line-height: 1.6;">{{ currentEvent?.text }}</p>
+            </div>
+            
+            <!-- Effect Feedback -->
+            <div v-if="feedback" style="margin-top: 20px; color: var(--success); font-weight: bold;">
+                {{ feedback }}
+            </div>
+        </div>
+
+        <!-- MARKET INTRO SCREEN -->
+        <div v-if="state.phase === 'MARKET_INTRO'" class="slide-up" style="text-align: left; padding: 20px;">
+             <h2 style="margin-bottom: 20px; color: var(--accent);">收竿时刻...</h2>
+             <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin-bottom: 20px; line-height: 1.6;">
+                 <p>夕阳西下，你提着空空如也的鱼护，站在路边。</p>
+                 <p>这是第 <span class="highlight">{{ state.fishedCount }}</span> 次抛竿，结果依然是 <span class="highlight" style="color: var(--danger);">0</span> 渔获。</p>
+                 <p>想起出门前老婆期待的眼神，想起邻居老王嘲讽的嘴角...</p>
+                 <p style="margin-top: 15px; font-style: italic; color: var(--text-dim);">"难道就这样回去吗？"</p>
+                 <p>远处，<span class="highlight">菜市场</span> 的灯光依然亮着，仿佛是最后的救赎。</p>
+             </div>
+             <button class="btn" @click="enterMarket">前往菜市场 (绝地反击)</button>
+             <button class="btn btn-outline" style="margin-top: 10px;" @click="leaveMarket">坦然接受 (直接回家)</button>
+        </div>
+
+        <!-- MARKET SCREEN -->
+        <div v-if="state.phase === 'MARKET'" class="slide-up">
+            <h2 style="margin-bottom: 10px;">路过菜市场</h2>
+            <p style="margin-bottom: 20px; color: var(--text-dim);">看着空空的鱼护，你动了歪心思...<br>当前资金: <span class="highlight">${{ state.money }}</span></p>
+            
+            <div style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
+                <div v-for="item in MARKET_ITEMS" :key="item.id" class="card" @click="buyFish(item)">
+                    <div class="card-icon">{{ item.icon }}</div>
+                    <div class="card-info">
+                        <div class="card-name">{{ item.name }}</div>
+                        <div class="card-desc" style="color: var(--danger);">
+                            识破率: {{ (getRealProb(item) * 100).toFixed(0) }}%
+                            <span v-if="state.inventory.includes('huazi')" style="color: var(--success); font-size: 0.8em;">(华子保佑)</span>
+                        </div>
+                    </div>
+                    <div class="card-price" :style="{color: state.money < item.price ? 'gray' : 'var(--accent)'}">
+                        ${{ item.price }}
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-outline" style="margin-top: 20px;" @click="leaveMarket">
+                算了，回家 (结束)
+            </button>
+        </div>
+
+    </main>
+
+    <!-- CONTROLS (JOURNEY ONLY) -->
+    <div class="controls" v-if="state.phase === 'JOURNEY'">
+        <!-- Action Bar for Meme/Strategic Actions -->
+        <div class="action-bar" v-if="currentEvent?.id !== 'no_bait'">
+            <button class="btn btn-outline btn-small" @click="doHeavyChum" :disabled="state.bait < 10 || state.heavyChum">
+                重窝 (-10) {{ state.heavyChum ? '✅' : '' }}
+            </button>
+            <button class="btn btn-outline btn-small" @click="doTasteBait" :disabled="state.bait <= 0 || state.sanity > 50">
+                舔一口饵
+            </button>
+        </div>
+
+        <button 
+            v-for="(choice, idx) in currentEvent?.choices" 
+            :key="idx" 
+            class="btn btn-outline"
+            @click="handleChoice(choice)"
+            :disabled="!canAfford(choice)"
+        >
+            {{ choice.text }} 
+            <span v-if="choice.cost" style="font-size: 0.8rem; opacity: 0.7;">
+                (-{{ choice.cost.val }} {{ choice.cost.type === 'stamina' ? '体力' : choice.cost.type === 'sanity' ? '心态' : choice.cost.type === 'money' ? '资金' : choice.cost.type === 'bait' ? '饵料' : '?' }})
+            </span>
+        </button>
+        <div class="log-area" ref="logContainer">
+            <div v-for="(log, i) in state.logs" :key="i" class="log-item" :class="{new: i === state.logs.length-1}">
+                > {{ log }}
+            </div>
+        </div>
+    </div>
+
+    <!-- ENDING MODAL -->
+    <div v-if="state.phase === 'ENDED'" class="modal-overlay">
+        <div class="modal slide-up">
+            <h2>{{ endingTitle }}</h2>
+            <div style="font-size: 3rem; margin: 20px 0;">{{ endingIcon }}</div>
+            
+            <div style="text-align: left; margin-bottom: 20px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px;">
+                <div>最终渔获: <span class="highlight">{{ state.catchWeight.toFixed(1) }}kg</span></div>
+                <div>剩余饵料: {{ state.bait }}</div>
+                <div>剩余体力: {{ state.stamina }}</div>
+            </div>
+
+            <!-- Narrative Result (Busted or Success) -->
+            <div v-if="state.flags.marketBusted" style="margin-bottom: 20px; color: var(--danger); font-style: italic;">
+                "{{ marketText }}"
+            </div>
+            <div v-else-if="state.flags.marketSuccess" style="margin-bottom: 20px; color: var(--success); font-style: italic;">
+                "你提着沉甸甸的鱼进家门，家人的眼神充满崇拜。"
+            </div>
+
+            <!-- Funny Moment -->
+            <div v-if="randomFunnyMoment" style="margin-bottom: 20px; border-left: 4px solid var(--accent); background: rgba(0,0,0,0.2); padding: 10px; text-align: left;">
+                <div style="font-weight: bold; color: var(--accent); font-size: 0.9rem;">今日糗事</div>
+                <div style="font-size: 0.8rem; color: var(--text-dim);">{{ randomFunnyMoment }}</div>
+            </div>
+
+            <div v-if="newAchievements.length > 0" style="margin-bottom: 20px;">
+                <h3 style="color: var(--accent); font-size: 0.9rem;">本局解锁成就</h3>
+                <div style="display: flex; flex-wrap: wrap; justify-content: center;">
+                    <div v-for="ach in newAchievements" :key="ach" style="font-size: 0.8rem; border: 1px solid var(--accent); border-radius: 4px; display: inline-block; padding: 2px 6px; margin: 2px;">
+                        {{ ach }}
+                    </div>
+                </div>
+            </div>
+
+            <p style="font-size: 0.8rem; color: var(--text-dim); font-style: italic;">
+                "{{ shareText }}"
+            </p>
+
+            <!-- LICENSE CARD (Hidden initially, shown for screenshot) -->
+            <div id="license-node" class="license-card">
+                <div class="license-header">
+                    <div class="license-title">钓鱼资格证</div>
+                    <div style="font-size: 0.6rem; color: #5a4632;">NEVER AIR FORCE ASSOCIATION</div>
+                </div>
+                <div class="license-body">
+                    <div class="license-photo">
+                        <div>🎣</div>
+                        <div style="font-size: 0.5rem; margin-top:5px;">{{ state.bait > 0 ? '有粮' : '断粮' }}</div>
+                    </div>
+                    <div class="license-info">
+                        <div><span class="license-label">姓名:</span> 绝不空军的钓鱼佬</div>
+                        <div><span class="license-label">日期:</span> {{ currentDate }}</div>
+                        <div><span class="license-label">最高荣誉:</span> <span style="color: #d32f2f; font-weight: bold;">{{ highestHonor }}</span></div>
+                        <div><span class="license-label">本次渔获:</span> {{ state.catchWeight.toFixed(1) }}kg</div>
+                        <div><span class="license-label">状态:</span> {{ state.stamina > 0 ? '良好' : '晕厥' }}</div>
+                    </div>
+                </div>
+                <div class="license-stamp" :style="{borderColor: stampColor, color: stampColor}">
+                    {{ stampText }}
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
+                <button class="btn" @click="resetGame">再来一竿</button>
+                <button class="btn btn-outline" @click="generatePoster">📸 生成执照</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TROPHY ROOM MODAL -->
+    <div v-if="showTrophyRoom" class="modal-overlay" @click.self="showTrophyRoom = false">
+        <div class="modal slide-up" style="max-width: 450px;">
+            <h2>荣誉室</h2>
+            <p style="font-size: 0.8rem; color: var(--text-dim);">已解锁: {{ unlockedCount }}/{{ ACHIEVEMENTS.length }}</p>
+            
+            <div class="trophy-grid">
+                <div 
+                    v-for="ach in ACHIEVEMENTS" 
+                    :key="ach.id" 
+                    class="trophy-item"
+                    :class="{ unlocked: hasAchievement(ach.id), legend: ach.rarity === 'legend' }"
+                    @click="showAchDetail(ach)"
+                >
+                    <span v-if="hasAchievement(ach.id)">{{ ach.icon || '🏆' }}</span>
+                    <span v-else>?</span>
+                </div>
+            </div>
+
+            <div v-if="selectedAch" style="margin-top: 20px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                <div style="font-weight: bold; color: var(--accent);">{{ selectedAch.name }}</div>
+                <div style="font-size: 0.8rem; margin: 5px 0;">{{ selectedAch.desc }}</div>
+                <div style="font-size: 0.7rem; color: var(--text-dim);">{{ selectedAch.rarity.toUpperCase() }}</div>
+            </div>
+
+            <button class="btn" style="margin-top: 20px;" @click="showTrophyRoom = false">返回</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+const { createApp, reactive, computed, ref, nextTick, onMounted, watch } = Vue;
+
+const CATEGORIES = { 
+    ROD: '核心鱼竿', 
+    LINE: '线组', 
+    FLOAT: '浮漂',
+    BAIT: '饵料小药', 
+    AUX: '辅助装备', 
+    SURVIVAL: '户外生存', 
+    MEME: '玄学热梗' 
+};
+
+const ITEMS_DB = [
+    // 1. 鱼竿 (Rods)
+    { id: 'rod_general_45', name: '4.5米综合竿', price: 300, weight: 1.0, category: 'ROD', desc: '手感适中，适合休闲野钓。', icon: '🎋', strength: 5.0 },
+    { id: 'rod_carbon_light', name: '超轻碳素短节竿', price: 700, weight: 0.5, category: 'ROD', desc: '轻若无物，久持不累，但看起来很脆。', icon: '🥢', strength: 2.0 },
+    { id: 'rod_giant_72', name: '7.2米巨物黑棍', price: 1200, weight: 3.0, category: 'ROD', desc: '重得像根烧火棍，专门对付水库巨兽。', icon: '🥖', strength: 100.0 },
+    { id: 'rod_lure', name: '路亚伸缩竿', price: 500, weight: 0.8, category: 'ROD', desc: '造型帅气，适合喜欢主动出击的年轻人。', icon: '🎣', strength: 4.0 },
+
+    // 2. 线组 (Lines) - New Logic
+    { id: 'line_08_thin', name: '0.8号袖钩细线', price: 60, weight: 0.1, category: 'LINE', desc: '细如发丝，隐蔽性极佳，但经不起折腾。', icon: '🧵', maxLoad: 2.0, sensitivity: 20 },
+    { id: 'line_30_gen', name: '3.0号综合线', price: 100, weight: 0.1, category: 'LINE', desc: '万金油线组，如果不追求极致的话。', icon: '🧶', maxLoad: 5.0, sensitivity: 10 },
+    { id: 'line_80_pe', name: '8.0号大力马线', price: 250, weight: 0.2, category: 'LINE', desc: '能拉动汽车的绳子，鱼看到可能会被吓跑。', icon: '⛓️', maxLoad: 100.0, sensitivity: -10 },
+
+    // 3. 浮漂 (Floats) - New Logic
+    { id: 'float_reed', name: '芦苇灵敏漂', price: 100, weight: 0.1, category: 'FLOAT', desc: '极其灵敏的纯手工漂，风一吹就乱晃。', icon: '🥢', sensitivity: 20 },
+    { id: 'float_electric', name: '加粗电子漂', price: 250, weight: 0.2, category: 'FLOAT', desc: '发出耀眼的蓝光，但似乎有点笨重。', icon: '💡', sensitivity: 0 },
+
+    // 4. 饵料 (Baits)
+    { id: 'bait_red_worms', name: '活体红虫', price: 80, weight: 0.5, category: 'BAIT', desc: '鲜活蠕动，对所有鱼类都有致命诱惑力。', icon: '🐛', baitVal: 40 },
+    { id: 'bait_grain', name: '五谷杂粮窝料', price: 200, weight: 1.0, category: 'BAIT', desc: '朴实无华的粮食，需要时间发酵。', icon: '🌽', baitVal: 80 }, // Weight reduced to 1kg per user example
+    { id: 'bait_potion', name: '神秘小药', price: 350, weight: 0.2, category: 'BAIT', desc: '散发着不可描述的化学气味，效果未知。', icon: '🧪', baitVal: 50 },
+
+    // 5. 辅助 (Aux)
+    { id: 'aux_box', name: '多功能钓箱', price: 500, weight: 5.0, category: 'AUX', desc: '不仅能装，坐着还舒服，就是有点沉。', icon: '📦' },
+    { id: 'aux_chair', name: '折叠钓椅', price: 250, weight: 2.0, category: 'AUX', desc: '轻便易携带，久坐可能会腰疼。', icon: '🪑' },
+    { id: 'aux_ice_bucket', name: '自制降温冰桶', price: 400, weight: 4.0, category: 'AUX', desc: '夏日必备，或许还有别的用途？', icon: '🧊' },
+    
+    // 6. 生存 (Survival)
+    { id: 'powerbank', name: '大容量充电宝', price: 200, weight: 0.5, category: 'SURVIVAL', desc: '现代人的生命维持装置。', icon: '🔋' },
+    { id: 'big_umbrella', name: '加大防雷伞', price: 400, weight: 1.5, category: 'SURVIVAL', desc: '巨大的伞面，能遮风挡雨，甚至引雷。', icon: '☂️' },
+    { id: 'huazi', name: '华子(一盒)', price: 100, weight: 0.1, category: 'SURVIVAL', desc: '散发着尊贵的气息，人情世故的敲门砖。', icon: '🚬' },
+    { id: 'noodles', name: '桶装方便面', price: 50, weight: 0.3, category: 'SURVIVAL', desc: '深夜抚慰灵魂的碳水炸弹。', icon: '🍜' },
+    { id: 'spray', name: '驱蚊喷雾', price: 80, weight: 0.2, category: 'SURVIVAL', desc: '含有避蚊胺，户外生存必备。', icon: '🦟' },
+    { id: 'sausage', name: '过期火腿肠', price: 30, weight: 0.1, category: 'SURVIVAL', desc: '包装袋有点褪色，闻起来味道怪怪的。', icon: '🌭' },
+    
+    // 7. Meme
+    { id: 'broken_net', name: '破洞抄网', price: 50, weight: 0.5, category: 'MEME', desc: '不知是谁扔掉的，网兜上有个大洞。', icon: '🕸️' },
+    { id: 'gold_disgorger', name: '金色挡针', price: 666, weight: 0.1, category: 'MEME', desc: '纯金打造，散发着土豪的光芒。', icon: '🔱' },
+    { id: 'skin', name: '最靓的仔', price: 999, weight: 0.0, category: 'MEME', desc: '全套荧光绿钓鱼服，夜空中最亮的星。', icon: '🕺' },
+];
+
+const MARKET_ITEMS = [
+    { id: 'market_grass', name: '半死不活的草鱼', price: 100, weight: 3, prob: 0.2, icon: '🐟' },
+    { id: 'market_black', name: '生猛水库大青鱼', price: 500, weight: 15, prob: 0.6, icon: '🦈' },
+    { id: 'market_turbot', name: '昂贵的深海多宝鱼', price: 1000, weight: 2, prob: 0.95, icon: '🐠' }
+];
+
+const ACHIEVEMENTS = [
+    { id: 'air_force_commander', name: '空军基地总司令', desc: '游戏结束时渔获为0', rarity: 'legend', icon: '🪣' },
+    { id: 'newbie_luck', name: '新手保护期', desc: '第一回合钓到5kg以上的大鱼', rarity: 'normal', icon: '🍼' },
+    { id: 'pure_fish', name: '陆军神枪手', desc: '渔获全是“真鱼”（无垃圾）', rarity: 'rare', icon: '🐟' },
+    { id: 'never_empty', name: '永不走空', desc: '没钓到鱼但带走了鸡/鸭/水', rarity: 'normal', icon: '🐔' },
+    { id: 'line_breaker', name: '切线狂魔', desc: '累计切线5次', rarity: 'normal', icon: '✂️' },
+    { id: 'lightning_rod', name: '全村吃饭', desc: '雷雨天无伞被劈', rarity: 'legend', icon: '⚡' },
+    { id: 'bait_master', name: '打窝仙人', desc: '携带4种饵料但渔获<1kg', rarity: 'rare', icon: '🍚' },
+    { id: 'social_king', name: '社交恐怖分子', desc: '用华子解决3次冲突', rarity: 'normal', icon: '🤝' },
+    { id: 'super_catch', name: '爆护！', desc: '单局渔获超过50kg', rarity: 'legend', icon: '⚖️' },
+    { id: 'ultimate_regret', name: '终极遗憾', desc: '拉竿瞬间手机没电或心态崩了', rarity: 'rare', icon: '💔' },
+    { id: 'duck_flew', name: '到手的鸭子飞了', desc: '因抄网破洞跑鱼', rarity: 'normal', icon: '🦆' },
+    { id: 'empty_promises', name: '空头支票', desc: '带了一堆饵料，一次竿都没抛(全打窝了)', rarity: 'rare', icon: '💸' },
+    { id: 'survivalist', name: '绝地求生', desc: '饵料耗尽后用路边的蚯蚓钓到鱼', rarity: 'legend', icon: '🧟' },
+    { id: 'water_feeder', name: '水库喂鱼员', desc: '和钓友比拼打窝，结果依然空军', rarity: 'normal', icon: '🥣' },
+    { id: 'cheater', name: '作弊玩家', desc: '购买老乡的鱼试图蒙混过关', rarity: 'rare', icon: '🤥' },
+    { id: 'broken_heart', name: '道心破碎', desc: '被树枝大爷嘲讽到退坑', rarity: 'legend', icon: '💔' },
+    { id: 'bad_acting', name: '由于演技过于拙劣...', desc: '在菜市场买鱼被家人当场拆穿', rarity: 'normal', icon: '🎭' },
+    { id: 'movie_star', name: '影帝级钓手', desc: '成功用买来的鱼骗过了所有人', rarity: 'legend', icon: '🎬' }
+];
+
+const EVENTS = [
+    { id: 'no_bait', title: '弹尽粮绝', text: '饵料盒比你的脸还干净。', icon: '🚫', choices: [
+        { text: '寻找替代品 (消耗体力)', type: 'find_worms', cost: { type: 'stamina', val: 20 } }, 
+        { text: '回家吃饭', type: 'give_up' }
+    ]},
+    // NPC EVENTS (Updated with JSON Spec)
+    { 
+        id: 'grandpa_mockery', 
+        title: '树枝战神的嘲讽', 
+        atmosphere_intro: '微风拂过，此时的水面静得可怕，你手里那根昂贵的碳素鱼竿显得有些烫手。突然，身后传来一阵踢踏踢踏的拖鞋声，打破了这份尴尬的宁静……',
+        text: '旁边跑来一个穿背心的大爷，随手折了一根柳树枝，系上缝衣线和曲别针，挂了半条辣条。', 
+        npc: { name: '大爷', avatar: '👴' },
+        cond: (s) => (s.inventory.includes('rod_carbon_light') || s.inventory.includes('rod_lure')) && s.catchWeight === 0 && Math.random() < 0.6,
+        choices: [
+            { text: '不屑一顾', type: 'grandpa_ignore', cost: { type: 'sanity', val: 10 } },
+            { text: '虚心求教 (需华子)', type: 'grandpa_learn', req: 'huazi' },
+            { text: '怀疑人生 (结束游戏)', type: 'grandpa_quit' }
+        ]
+    },
+    {
+        id: 'air_force_alliance',
+        title: '空军阵线联盟',
+        atmosphere_intro: '夕阳将水面渡了一层金，四周安静得只能听见蚊子的嗡嗡声。你百无聊赖地抬起头，目光越过水面……',
+        text: '你和对岸的钓友对视了一眼，从彼此深邃且疲惫的眼眸中，看到了相同的寂寞。',
+        npc: { name: '陌生钓友', avatar: '🎣' },
+        cond: (s) => s.catchWeight === 0 && s.stage > 2 && Math.random() < 0.5,
+        choices: [
+            { text: '互诉衷肠', type: 'alliance_chat' },
+            { text: '比拼定力 (消耗20饵料)', type: 'alliance_compete', cost: { type: 'bait', val: 20 } }
+        ]
+    },
+    {
+        id: 'wife_video_call',
+        title: '老婆的视频通话',
+        atmosphere_intro: '天色渐暗，四周的虫鸣声催得人心烦意乱。突然，裤兜里一阵急促的震动让你虎躯一震，屏幕上跳动的名字是——“老婆”。',
+        text: '老婆打来视频，镜头里全家人围在桌边，都在等着你的鱼下锅。',
+        npc: { name: '老婆', avatar: '👩' },
+        cond: (s) => s.stage > 6 && s.stamina < 60 && Math.random() < 0.5,
+        choices: [
+            { text: '开启虚幻摄像头 (需充电宝)', type: 'wife_fake', req: 'powerbank' },
+            { text: '诚实交代', type: 'wife_honest', cost: { type: 'sanity', val: 30 } },
+            { text: '展示渔获', type: 'wife_show' }
+        ]
+    },
+    {
+        id: 'buy_fish',
+        title: '野性消费的诱惑',
+        atmosphere_intro: '随着一阵突突突的引擎声，尘土飞扬。一股浓郁的鱼腥味先于声音飘进了你的鼻腔，那是强者的气息。',
+        text: '一个骑摩托的当地老乡路过，筐里有几条刚网上来的活鱼，眼神充满深意。',
+        npc: { name: '老乡', avatar: '🛵' },
+        cond: (s) => Math.random() < 0.4, // Remove money condition from spawn, check in choice
+        choices: [
+            { text: '购买"入场券"', type: 'buy_fish', cost: { type: 'money', val: 200 } },
+            { text: '严辞拒绝', type: 'refuse_buy' }
+        ]
+    },
+    // STANDARD EVENTS
+    { id: 'fishing_spot', title: '绝佳钓点', text: '水草丰茂，必定有货。但是旁边有只凶猛的大鹅。', icon: '🦢', choices: [{ text: '战斗！(体力)', type: 'fight_goose', cost: { type: 'stamina', val: 20 } }, { text: '绕路 (心态)', type: 'flee', cost: { type: 'sanity', val: 15 } }, { text: '投喂 (需饵料)', type: 'feed', req: 'bait_any' }] },
+    { id: 'storm', title: '暴雨倾盆', text: '天气突然变脸，电闪雷鸣。', icon: '⛈️', choices: [{ text: '硬抗 (心态)', type: 'endure_storm', cost: { type: 'sanity', val: 25 } }, { text: '躲避 (消耗回合)', type: 'skip_turn' }, { text: '富贵险中求 (高风险)', type: 'risk_fish', cost: { type: 'stamina', val: 30 } }] },
+    { id: 'snag', title: '挂底了', text: '鱼钩挂在了地上，拉不动。', icon: '🪝', choices: [{ text: '大力出奇迹 (体力)', type: 'pull_hard', cost: { type: 'stamina', val: 15 } }, { text: '切线保杆 (心态)', type: 'cut_line', cost: { type: 'sanity', val: 20 } }] },
+    { id: 'normal_fish', title: '平静的水面', text: '浮漂微微点动...', icon: '🌊', choices: [{ text: '提竿！', type: 'fish_normal', cost: { type: 'stamina', val: 10 } }, { text: '再等等', type: 'wait_fish', cost: { type: 'sanity', val: 5 } }] },
+    { id: 'security_check', title: '保安查证', text: '“喂！这里不让钓鱼！有证吗？”', icon: '👮', choices: [{ text: '递上一根华子', type: 'give_huazi', req: 'huazi' }, { text: '据理力争 (心态)', type: 'argue', cost: { type: 'sanity', val: 15 } }, { text: '提桶跑路 (体力)', type: 'run_away', cost: { type: 'stamina', val: 20 } }] },
+    { id: 'mosquito_attack', title: '蚊虫大军', text: '嗡嗡嗡...夏夜的蚊子像轰炸机一样。', icon: '🦟', cond: (s) => s.stage > 5, choices: [{ text: '喷驱蚊水', type: 'use_spray', req: 'spray' }, { text: '喂蚊子 (心态)', type: 'feed_mosquito', cost: { type: 'sanity', val: 20 } }, { text: '狂抽自己 (体力)', type: 'slap_mosquito', cost: { type: 'stamina', val: 10 } }] },
+    { id: 'stray_cat', title: '不速之客', text: '一只流浪猫盯着你的鱼护。', icon: '🐱', choices: [{ text: '给根火腿肠', type: 'feed_sausage', req: 'sausage' }, { text: '给条小鱼 (渔获-0.5kg)', type: 'give_fish', cond: (s) => s.catchWeight > 0.5 }, { text: '赶走它 (心态)', type: 'shoo_cat', cost: { type: 'sanity', val: 5 } }] },
+    { id: 'grass_hole', title: '复杂草洞', text: '前面有一片密集的水草，大板鲫最爱藏在这里。', icon: '🌿', choices: [{ text: '精准下钩 (需长竿)', type: 'fish_hole', req: 'rod_giant_72' }, { text: '尝试作钓 (高挂底率)', type: 'fish_hole_risky', cost: { type: 'stamina', val: 15 } }, { text: '放弃', type: 'skip_turn' }] },
+    { id: 'kfc', title: '疯狂星期四', text: '此时此刻，你只想吃一顿好的。', icon: '🍗', cond: (s) => s.stamina < 30, choices: [{ text: 'V我50 (回满)', type: 'eat_kfc' }, { text: '忍住 (心态)', type: 'starve', cost: { type: 'sanity', val: 10 } }] },
+    { id: 'eat_noodles', title: '饥肠辘辘', text: '肚子饿得咕咕叫。', icon: '🍜', cond: (s) => s.stamina < 50 && s.inventory.includes('noodles'), choices: [{ text: '吃泡面 (回30体)', type: 'use_noodles' }, { text: '接着奏乐接着钓', type: 'ignore_hunger' }] },
+    { id: 'fellow_angler', title: '路遇钓友', text: '“兄弟，有饵料吗？借点急用，下回请你喝红牛。”', icon: '🤷‍♂️', cond: (s) => s.bait > 15, choices: [{ text: '分他一半 (饵料减半)', type: 'share_bait' }, { text: '假装没听见', type: 'ignore_angler' }] },
+    { id: 'small_fish', title: '小鱼闹窝', text: '浮漂上下乱舞，全是餐条在捣乱。', icon: '🐟', choices: [{ text: '加大投饵 (3倍消耗)', type: 'heavy_feed_scare', cost: { type: 'bait', val: 3 } }, { text: '听天由命', type: 'wait_fish' }] }
+];
+
+createApp({
+    setup() {
+        const MAX_STAGES = 12;
+        const state = reactive({
+            phase: 'START',
+            stamina: 100,
+            sanity: 100,
+            catchWeight: 0,
+            money: 1000,
+            inventory: [],
+            discounts: [],
+            stage: 1,
+            logs: [],
+            bait: 0,
+            maxBait: 0,
+            heavyChum: false,
+            usingWorms: false,
+            fishedCount: 0,
+            initialBait: 0,
+            flags: {
+                firstCatch: false, stoleChicken: false, failedBigFish: 0, 
+                drankWater: false, duckFlew: false, poisoned: false,
+                huaziCount: 0, lightningStruck: false, pureFish: true, caughtAnything: false,
+                sharedBait: false, boughtFish: false, grandpaBuff: false,
+                marketSuccess: false, marketBusted: false,
+                hasBigFish: false // Explicit flag for big fish
+            },
+            triggeredEvents: [], // FIX: Track triggered event IDs to prevent duplicates
+            weather: 'CLEAR', // CLEAR, WINDY, STORM, NIGHT
+            funnyLog: [],
+            maxFishWeight: 0.0 // Track max weight for single fish
+        });
+
+        const activeTab = ref('ROD');
+        const currentEvent = ref(null);
+        const feedback = ref('');
+        const newAchievements = ref([]);
+        const logContainer = ref(null);
+        const marketText = ref('');
+        
+        // Weight System
+        const currentWeight = computed(() => {
+            return state.inventory.reduce((sum, id) => {
+                const item = ITEMS_DB.find(i => i.id === id);
+                return sum + (item ? item.weight : 0);
+            }, 0);
+        });
+
+        const currentStats = computed(() => {
+            const rod = ITEMS_DB.find(i => state.inventory.includes(i.id) && i.category === 'ROD');
+            const line = ITEMS_DB.find(i => state.inventory.includes(i.id) && i.category === 'LINE');
+            const float = ITEMS_DB.find(i => state.inventory.includes(i.id) && i.category === 'FLOAT');
+
+            const rodStrength = rod ? rod.strength : 0;
+            const lineStrength = line ? line.maxLoad : 0;
+            
+            // If missing either, effective drag is 0 (or determined by the weak link if we assume hand-line)
+            // But realistically, you need both.
+            const maxDrag = (rod && line) ? Math.min(rodStrength, lineStrength) : 0;
+            
+            const sensitivity = (line ? (line.sensitivity || 0) : 0) + (float ? (float.sensitivity || 0) : 0);
+            
+            return { maxDrag, sensitivity };
+        });
+
+        const compatibilityWarning = computed(() => {
+            const hasBigRod = state.inventory.includes('rod_giant_72');
+            const hasThinLine = state.inventory.includes('line_08_thin');
+            
+            if (hasBigRod && hasThinLine) {
+                return '⚠️ 警告：由于线组过细，您可能无法发挥鱼竿的全部威力';
+            }
+            return '';
+        });
+
+        const canStart = computed(() => {
+             // 1. Weight Check
+             if (currentWeight.value > 10.0) return false;
+             // 2. Essential Gear Check
+             const hasLine = state.inventory.some(id => ITEMS_DB.find(i => i.id === id && i.category === 'LINE'));
+             const hasFloat = state.inventory.some(id => ITEMS_DB.find(i => i.id === id && i.category === 'FLOAT'));
+             return hasLine && hasFloat;
+        });
+
+        // Achievement System
+        const unlockedAchievements = reactive(new Set());
+        const activeToasts = ref([]);
+        const showTrophyRoom = ref(false);
+        const selectedAch = ref(null);
+
+        onMounted(() => {
+            const saved = localStorage.getItem('fishing_achievements');
+            if(saved) {
+                JSON.parse(saved).forEach(id => unlockedAchievements.add(id));
+            }
+        });
+
+        const unlockAchievement = (id) => {
+            if (unlockedAchievements.has(id)) return;
+            const ach = ACHIEVEMENTS.find(a => a.id === id);
+            if (!ach) return;
+
+            unlockedAchievements.add(id);
+            localStorage.setItem('fishing_achievements', JSON.stringify([...unlockedAchievements]));
+            
+            const toast = { id: Date.now(), name: ach.name, rarity: ach.rarity };
+            activeToasts.value.push(toast);
+            setTimeout(() => { activeToasts.value.shift(); }, 3000);
+
+            if (!newAchievements.value.includes(ach.name)) {
+                newAchievements.value.push(ach.name);
+            }
+        };
+
+        const checkRealtimeAchievements = () => {
+             if (state.flags.failedBigFish >= 5) unlockAchievement('line_breaker');
+             if (state.flags.huaziCount >= 3) unlockAchievement('social_king');
+             if (state.catchWeight > 10) unlockAchievement('super_catch');
+             if (state.flags.lightningStruck) unlockAchievement('lightning_rod');
+             if (state.flags.duckFlew) unlockAchievement('duck_flew');
+        };
+
+        const checkEndGameAchievements = () => {
+            if (state.catchWeight === 0) unlockAchievement('air_force_commander');
+            if (state.catchWeight > 0 && state.flags.pureFish && state.flags.caughtAnything && !state.flags.boughtFish && !state.flags.marketSuccess) unlockAchievement('pure_fish');
+            if (state.catchWeight === 0 && (state.flags.stoleChicken || state.flags.drankWater)) unlockAchievement('never_empty');
+            
+            const baitCount = state.inventory.filter(id => {
+                const item = ITEMS_DB.find(i => i.id === id);
+                return item && item.category === 'BAIT';
+            }).length;
+            if (baitCount >= 4 && state.catchWeight < 1) unlockAchievement('bait_master');
+
+            if (state.initialBait > 50 && state.fishedCount === 0) unlockAchievement('empty_promises');
+            if (state.flags.boughtFish) unlockAchievement('cheater');
+            
+            // Market Achievements
+            if (state.flags.marketBusted) unlockAchievement('bad_acting');
+            if (state.flags.marketSuccess) unlockAchievement('movie_star');
+        };
+
+        // --- COMPUTED ---
+        const filteredItems = computed(() => ITEMS_DB.filter(i => i.category === activeTab.value));
+        const isDiscounted = (id) => state.discounts.includes(id);
+        const unlockedCount = computed(() => unlockedAchievements.size);
+        const hasAchievement = (id) => unlockedAchievements.has(id);
+        const currentDate = computed(() => new Date().toLocaleDateString());
+        
+        const isLowBait = computed(() => state.maxBait > 0 && state.bait < state.maxBait * 0.1);
+        const randomFunnyMoment = computed(() => {
+            if (state.funnyLog.length === 0) return null;
+            return state.funnyLog[Math.floor(Math.random() * state.funnyLog.length)];
+        });
+
+        const highestHonor = computed(() => {
+            const unlocked = Array.from(unlockedAchievements).map(id => ACHIEVEMENTS.find(a => a.id === id));
+            if(unlocked.length === 0) return '初级钓鱼佬';
+            const legends = unlocked.filter(a => a.rarity === 'legend');
+            if(legends.length > 0) return legends[legends.length - 1].name;
+            const rares = unlocked.filter(a => a.rarity === 'rare');
+            if(rares.length > 0) return rares[rares.length - 1].name;
+            return unlocked[unlocked.length - 1].name;
+        });
+
+        const stampText = computed(() => {
+            if (state.catchWeight === 0) return '空军';
+            if (state.catchWeight > 50) return '爆护';
+            return '核准';
+        });
+
+        const stampColor = computed(() => {
+            if (state.catchWeight === 0) return '#555';
+            if (state.catchWeight > 50) return '#d32f2f';
+            return '#1976d2';
+        });
+
+        // --- ACTIONS ---
+        const addLog = (msg) => {
+            state.logs.push(msg);
+            nextTick(() => { if(logContainer.value) logContainer.value.scrollTop = logContainer.value.scrollHeight; });
+        };
+        
+        const recordFunny = (msg) => {
+            state.funnyLog.push(msg);
+        };
+
+        const showAchDetail = (ach) => {
+            if (hasAchievement(ach.id)) selectedAch.value = ach;
+        };
+
+        const startGame = () => {
+            resetState();
+            activeTab.value = 'ROD'; // FIX: Ensure Core Tackle is shown by default
+            const allIds = ITEMS_DB.map(i => i.id);
+            for(let i=0; i<3; i++) {
+                const rand = allIds[Math.floor(Math.random() * allIds.length)];
+                if(!state.discounts.includes(rand)) state.discounts.push(rand);
+            }
+            state.phase = 'PREPARE';
+        };
+
+        const resetState = () => {
+            state.stamina = 100;
+            state.sanity = 100;
+            state.catchWeight = 0;
+            state.money = 1000;
+            state.inventory = [];
+            state.discounts = [];
+            state.stage = 1;
+            state.logs = [];
+            state.bait = 0;
+            state.maxBait = 0;
+            state.heavyChum = false;
+            state.usingWorms = false;
+            state.fishedCount = 0;
+            state.initialBait = 0;
+            state.triggeredEvents = []; // FIX: Reset triggered events
+            state.flags = { 
+                firstCatch: false, stoleChicken: false, failedBigFish: 0, 
+                drankWater: false, duckFlew: false, poisoned: false,
+                huaziCount: 0, lightningStruck: false, pureFish: true, caughtAnything: false,
+                sharedBait: false, boughtFish: false, grandpaBuff: false,
+                marketSuccess: false, marketBusted: false,
+                hasBigFish: false
+            };
+            newAchievements.value = [];
+            feedback.value = '';
+            state.funnyLog = [];
+            marketText.value = '';
+        };
+
+        const toggleItem = (item) => {
+            const idx = state.inventory.indexOf(item.id);
+            const price = isDiscounted(item.id) ? item.price / 2 : item.price;
+            
+            if (idx > -1) {
+                state.inventory.splice(idx, 1);
+                state.money += price;
+            } else {
+                if (state.inventory.length < 7 && state.money >= price) {
+                    state.inventory.push(item.id);
+                    state.money -= price;
+                }
+            }
+        };
+
+        const startJourney = () => {
+            // Calculate Bait
+            let totalBait = 0;
+            state.inventory.forEach(id => {
+                const item = ITEMS_DB.find(i => i.id === id);
+                if (item && item.baitVal) totalBait += item.baitVal;
+            });
+            
+            if (state.inventory.includes('aux_box')) {
+                totalBait += 20;
+            }
+
+            if (totalBait === 0 && !state.inventory.includes('bait_grain') && !state.inventory.includes('bait_red_worms') && !state.inventory.includes('bait_potion')) {
+                 addLog('没买饵料？只好挖了点蚯蚓凑合。(饵料+10)');
+                 totalBait = 10;
+            }
+
+            state.bait = totalBait;
+            state.maxBait = totalBait;
+            state.initialBait = totalBait;
+            
+            state.phase = 'JOURNEY';
+            nextStage();
+        };
+
+        const doHeavyChum = () => {
+            if (state.bait >= 10) {
+                state.bait -= 10;
+                state.heavyChum = true;
+                addLog('重窝已打！坐等巨物！');
+            }
+        };
+
+        const doTasteBait = () => {
+            if (state.bait <= 0) return;
+            const outcome = Math.random();
+            if (outcome > 0.5) {
+                state.sanity += 5;
+                state.bait -= 1;
+                addLog('这味儿正！心态+5');
+                recordFunny('饿极了舔了一口鱼饵，竟然觉得味道不错。');
+            } else {
+                state.stamina -= 15;
+                state.bait -= 1;
+                addLog('呸！过期了！肚子好痛... 体力-15');
+                recordFunny('偷吃鱼饵导致急性肠胃炎。');
+            }
+        };
+
+        const nextStage = () => {
+            feedback.value = '';
+            checkRealtimeAchievements();
+
+            if (state.stamina <= 0 || state.sanity <= 0 || state.stage > MAX_STAGES) {
+                triggerEndGame();
+                return;
+            }
+
+            // Passive Effects
+            if (state.inventory.includes('parallel_rod')) state.sanity += 2;
+            if (state.inventory.includes('chemical') && state.stage > 5) {
+                state.sanity -= 10;
+                addLog('旁边的钓友对你指指点点...');
+            }
+
+            // Check Bait
+            if (state.bait <= 0 && !state.usingWorms) {
+                const ev = EVENTS.find(e => e.id === 'no_bait');
+                if(ev) { currentEvent.value = ev; return; }
+            }
+
+            // Random Events Logic
+            let pool = EVENTS.filter(e => (!e.cond || e.cond(state)) && e.id !== 'no_bait');
+            
+            // Priority Events (Fix: Check priority events first and RETURN if triggered)
+            if (state.stamina < 50 && state.inventory.includes('noodles') && Math.random() > 0.3) {
+                const ev = EVENTS.find(e => e.id === 'eat_noodles');
+                if(ev && !state.triggeredEvents.includes(ev.id)) { // FIX: Check duplication
+                    currentEvent.value = ev; 
+                    state.triggeredEvents.push(ev.id); // Mark triggered
+                    return; 
+                }
+            }
+            if (state.stage > 8 && !state.inventory.includes('spray') && Math.random() > 0.6) {
+                 const ev = EVENTS.find(e => e.id === 'mosquito_attack');
+                 if(ev && !state.triggeredEvents.includes(ev.id)) { // FIX: Check duplication
+                     currentEvent.value = ev; 
+                     state.triggeredEvents.push(ev.id); // Mark triggered
+                     return; 
+                 }
+            }
+
+            // High Priority NPC Events Check (Force check before standard pool)
+            const npcEvents = EVENTS.filter(e => e.npc && e.cond && e.cond(state) && !state.triggeredEvents.includes(e.id)); // FIX: Filter out triggered
+            if (npcEvents.length > 0) {
+                 // 70% chance to pick an NPC event if available
+                 if (Math.random() < 0.7) {
+                     const ev = npcEvents[Math.floor(Math.random() * npcEvents.length)];
+                     currentEvent.value = ev;
+                     state.triggeredEvents.push(ev.id); // Mark triggered
+                     return;
+                 }
+            }
+
+            // Fallback to standard pool
+            // Filter out NPC events if we decided not to show them (or if they failed condition)
+            // But wait, 'pool' already contains valid events.
+            // If pool is empty (rare), default to something safe
+            if (pool.length === 0) {
+                 const safeEv = EVENTS.find(e => e.id === 'normal_fish');
+                 currentEvent.value = safeEv;
+                 // Don't mark normal fish as triggered, as it can repeat
+                 return;
+            }
+
+            // Filter pool for non-repeatable events (standard events can repeat, but maybe limit some unique ones?)
+            // For now, let's assume only NPC/Story events are unique.
+            // But user asked to fix duplication for "Story Content".
+            // Let's make ALL events with an ID other than 'normal_fish', 'small_fish', 'snag', 'storm' unique per session?
+            // Actually, let's just make the NPC/Special events unique.
+            
+            // Re-filter pool to exclude already triggered unique events
+            // Let's define which ones are repeatable.
+            // ONLY 'normal_fish' and 'small_fish' should be truly repeatable to fill gaps.
+            // Everything else (snags, storms, random events) should ideally happen once or twice at most.
+            // User requested: "try not to repeat event content".
+            
+            const repeatable = ['normal_fish', 'small_fish']; // Strictly limited repeatable events
+            
+            // Allow repeat if pool is too small, but prioritize unused
+            let finalPool = pool.filter(e => !state.triggeredEvents.includes(e.id));
+            
+            if (finalPool.length === 0) {
+                 // If run out of unique events, fallback to repeatable ones
+                 finalPool = pool.filter(e => repeatable.includes(e.id));
+            }
+            
+            if (finalPool.length === 0) {
+                 // Absolute fallback
+                 currentEvent.value = EVENTS.find(e => e.id === 'normal_fish');
+                 return;
+            }
+
+            const ev = finalPool[Math.floor(Math.random() * finalPool.length)];
+            currentEvent.value = ev;
+            state.triggeredEvents.push(ev.id); // Mark ALL as triggered (even normal fish, but we handle logic above)
+        };
+
+        const canAfford = (choice) => {
+            if (choice.req === 'bait_any') return state.bait > 5;
+            if (choice.req && !state.inventory.includes(choice.req)) return false;
+            
+            if (choice.cost) {
+                if (choice.cost.type === 'stamina' && state.stamina < choice.cost.val) return false;
+                if (choice.cost.type === 'sanity' && state.sanity < choice.cost.val) return false;
+                if (choice.cost.type === 'bait' && state.bait < choice.cost.val) return false;
+                if (choice.cost.type === 'money' && state.money < choice.cost.val) return false;
+            }
+            return true;
+        };
+
+        const handleChoice = (choice) => {
+            if (choice.cost) {
+                let val = choice.cost.val;
+                if (choice.cost.type === 'stamina') {
+                    if (state.inventory.includes('lure_set')) val = Math.ceil(val * 1.1);
+                    state.stamina -= val;
+                }
+                if (choice.cost.type === 'sanity') state.sanity -= val;
+                if (choice.cost.type === 'bait') state.bait -= val;
+                if (choice.cost.type === 'money') state.money -= val;
+            }
+
+            let msg = '';
+            let success = Math.random() > 0.4;
+            
+            switch(choice.type) {
+                // NPC EVENTS LOGIC
+                case 'grandpa_ignore':
+                    state.sanity -= 20;
+                    msg = '大爷反手拉上一条5kg草鱼。你心态崩了。';
+                    recordFunny('被拿树枝钓鱼的大爷无情嘲讽。');
+                    break;
+                case 'grandpa_learn':
+                    state.flags.grandpaBuff = true;
+                    msg = '大爷传授了“神级钓位”。本局大鱼概率+20%！';
+                    break;
+                case 'grandpa_quit':
+                    state.sanity = 0;
+                    unlockAchievement('broken_heart');
+                    msg = '你被打击得体无完肤，折竿回家。';
+                    recordFunny('因为被大爷嘲讽而当场退坑。');
+                    break;
+                case 'alliance_chat':
+                    state.sanity += 20;
+                    state.stamina += 10;
+                    msg = '你们交流了哪家外卖最好吃。';
+                    recordFunny('和陌生钓友在河边聊了半小时外卖。');
+                    break;
+                case 'alliance_compete':
+                    unlockAchievement('water_feeder');
+                    msg = '你们疯狂打窝，结果依然空军。';
+                    recordFunny('和钓友比拼打窝，把鱼都喂饱了。');
+                    break;
+                case 'wife_fake':
+                    state.sanity += 5;
+                    msg = '假装信号不好，蒙混过关。';
+                    recordFunny('用充电宝制造“信号不好”的假象骗过了老婆。');
+                    break;
+                case 'wife_honest':
+                    msg = '老婆让你去菜市场买两条。';
+                    recordFunny('老婆建议去菜市场进货。');
+                    break;
+                case 'wife_show':
+                    if (state.catchWeight > 0) {
+                        state.sanity += 50;
+                        msg = '老婆夸你真棒！家庭地位+1。';
+                    } else {
+                        state.stamina -= 10;
+                        msg = '空气突然安静... 尴尬得脚趾扣地。';
+                        recordFunny('视频通话展示空桶，全家沉默。');
+                    }
+                    break;
+                case 'monster_brag':
+                    state.sanity = 100;
+                    unlockAchievement('local_king');
+                    msg = '全场最佳！你就是这条河的王！';
+                    recordFunny('给全村人发烟吹嘘自己钓的大鱼。');
+                    break;
+                case 'monster_humble':
+                    state.sanity += 20;
+                    unlockAchievement('versailles');
+                    msg = '“这种鱼我平时都放生的。”';
+                    recordFunny('钓到巨物后凡尔赛发言。');
+                    break;
+                case 'monster_market':
+                    state.sanity += 30;
+                    state.stamina -= 20;
+                    state.flags.marketParade = true; // No scam check
+                    msg = '鱼贩子看傻了眼。';
+                    recordFunny('把巨物绑在车后座去菜市场游街。');
+                    break;
+                case 'monster_home':
+                    unlockAchievement('family_status_up');
+                    msg = '回家！今天必须加餐！';
+                    triggerEndGame();
+                    return;
+                case 'buy_fish':
+                    state.flags.boughtFish = true;
+                    state.catchWeight += 5.0; // FIX: Actually add weight
+                    msg = '含泪买下老乡的鱼。获得渔获 5.0kg';
+                    recordFunny('花钱买老乡的鱼冒充战绩。');
+                    break;
+                case 'refuse_buy':
+                    state.sanity += 10;
+                    msg = '我钓的是寂寞，不是鱼。';
+                    break;
+
+                // STANDARD EVENTS LOGIC
+                case 'find_worms':
+                    if (Math.random() > 0.5) {
+                        state.bait += 5; // FIX: Add real bait to unlock UI
+                        state.maxBait = Math.max(state.maxBait, state.bait);
+                        state.usingWorms = true; // Mark as using worms for achievement
+                        msg = '挖到了几条红蚯蚓！(饵料+5)';
+                        // fishing(false); // Removed to allow normal event flow
+                    } else {
+                        msg = '除了泥巴什么也没有...';
+                        state.sanity -= 10;
+                        recordFunny('在河边挖泥巴挖了半天。');
+                    }
+                    break;
+                case 'give_up':
+                    triggerEndGame();
+                    return;
+                case 'share_bait':
+                    state.bait = Math.floor(state.bait / 2);
+                    state.flags.sharedBait = true;
+                    msg = '赠人玫瑰，手有余香。';
+                    state.sanity += 10;
+                    break;
+                case 'ignore_angler':
+                    msg = '你假装在看风景。';
+                    break;
+                case 'heavy_feed_scare':
+                    msg = '一顿狂轰滥炸，小鱼散了。';
+                    state.heavyChum = true;
+                    break;
+                case 'fight_goose':
+                    if (success) { msg = '战胜了大鹅！'; fishing(true); } 
+                    else { msg = '被大鹅啄伤...'; state.sanity -= 20; recordFunny('被一只大鹅追着咬。'); }
+                    break;
+                case 'feed':
+                    state.bait -= 5;
+                    msg = '大鹅吃饱了。'; fishing(false);
+                    break;
+                case 'endure_storm':
+                    if (state.inventory.includes('big_umbrella')) msg = '有大伞，稳如泰山。';
+                    else { msg = '淋成落汤鸡。'; state.sanity -= 10; recordFunny('在暴雨中思考人生。'); }
+                    break;
+                case 'risk_fish':
+                     if (state.inventory.includes('big_umbrella')) {
+                         msg = '雷雨天作钓，狂拉！'; fishing(true);
+                     } else {
+                        if (Math.random() > 0.7) { msg = '富贵险中求！'; fishing(true); }
+                        else { msg = '被雷劈了！'; state.sanity -= 50; state.stamina -= 50; state.flags.lightningStruck = true; recordFunny('被雷劈了还在坚持作钓。'); }
+                     }
+                     break;
+                case 'give_huazi':
+                    msg = '保安大哥抽了华子，祝你爆护。';
+                    state.sanity += 10;
+                    state.flags.huaziCount++;
+                    break;
+                case 'argue':
+                    msg = '保安把你赶走了。'; state.sanity -= 15;
+                    recordFunny('和保安吵架被赶出钓点。');
+                    break;
+                case 'use_spray':
+                    msg = '蚊子都不敢近身。';
+                    break;
+                case 'feed_mosquito':
+                    msg = '舍身喂蚊...';
+                    break;
+                case 'feed_sausage':
+                    if (Math.random() > 0.3) { msg = '猫咪吃得很开心，呼噜呼噜启动了帝王引擎。'; } else { msg = '猫咪吃完嫌弃地走了。'; }
+                    if (currentEvent.value.id === 'stray_cat' && Math.random() > 0.8) { state.flags.poisoned = true; msg += ' 但你闻到火腿肠好像馊了...'; }
+                    break;
+                case 'give_fish':
+                    state.catchWeight = Math.max(0, state.catchWeight - 0.5);
+                    msg = '你挑了一条最小的鱼喂给猫咪。猫咪很满意。';
+                    state.sanity += 10;
+                    break;
+                case 'shoo_cat':
+                    msg = '你赶走了猫。良心有点痛。';
+                    state.sanity -= 5;
+                    break;
+                case 'fish_hole':
+                    msg = '七星漂就是好用！'; fishing(true);
+                    break;
+                case 'fish_hole_risky':
+                    if(Math.random() > 0.8) { msg = '运气好，拉出来了！'; fishing(true); } else { msg = '挂草了，无奈断线。'; state.sanity -= 10; }
+                    break;
+                case 'use_noodles':
+                    state.stamina += 30;
+                    msg = '一碗泡面下肚，灵魂复苏。';
+                    break;
+                case 'fish_normal':
+                    fishing(false);
+                    break;
+                case 'pull_hard':
+                    if (state.stamina <= 5 || state.sanity <= 5) unlockAchievement('ultimate_regret');
+                    
+                    // Extreme Fishing Logic: Allow over-exertion for big fish chance
+                    if (state.stamina < 15 && state.inventory.includes('pe_line')) {
+                         state.sanity -= 20; // Mental breakdown instead of stamina
+                         msg = '【极限拉竿】透支心态强行起鱼！';
+                         fishing(false);
+                    } else if (state.stamina < 15) {
+                         msg = '体力不支，拉不动了...';
+                    } else if (state.inventory.includes('pe_line')) { 
+                        msg = '大力马线就是强！硬拉回来了！'; fishing(false); 
+                    } else { 
+                        if (Math.random() > 0.5) { msg = '拉回来了！'; fishing(false); } 
+                        else { msg = '切线了...'; state.sanity -= 30; state.flags.failedBigFish++; recordFunny('因为不想切线而心态爆炸。'); } 
+                    }
+                    break;
+                case 'cut_line':
+                    msg = '及时止损。';
+                    break;
+                case 'steal_chicken':
+                    state.flags.stoleChicken = true;
+                    msg = '顺走了一只鸡...';
+                    recordFunny('因为没钓到鱼顺走了村民一只鸡。');
+                    break;
+                case 'drink_water':
+                    state.flags.drankWater = true;
+                    state.stamina += 20;
+                    msg = '喝了口井水。';
+                    break;
+                default:
+                    msg = '无事发生。';
+            }
+
+            addLog(msg);
+            feedback.value = msg;
+            setTimeout(() => { state.stage++; nextStage(); }, 1500);
+        };
+
+        const fishing = (isBonus) => {
+            // Check Bait Consumption
+            let baitCost = 2;
+            if (state.usingWorms) baitCost = 0; 
+            
+            // Rod Stamina Cost Modifiers
+            let staminaCost = 10; 
+            if (state.inventory.includes('rod_carbon_light')) staminaCost = 7; 
+            if (state.inventory.includes('rod_giant_72')) staminaCost = 20; 
+
+            // Line & Float Logic
+            const line = ITEMS_DB.find(i => state.inventory.includes(i.id) && i.category === 'LINE');
+            const float = ITEMS_DB.find(i => state.inventory.includes(i.id) && i.category === 'FLOAT');
+            const rod = ITEMS_DB.find(i => state.inventory.includes(i.id) && i.category === 'ROD');
+
+            if (line && line.id === 'line_80_pe') staminaCost += 5; // Heavy line penalty
+            
+            // Heavy Load Penalty Logic (Dynamic)
+            if (currentWeight.value >= 8.0) {
+                 staminaCost = Math.ceil(staminaCost * 1.2);
+            }
+
+            if (!state.usingWorms && state.bait < baitCost) {
+                addLog('饵料不足，无法作钓！');
+                return;
+            }
+            if (state.stamina < staminaCost) {
+                addLog('体力透支，无法抛竿！');
+                return;
+            }
+
+            if (!state.usingWorms) state.bait -= baitCost;
+            state.stamina -= staminaCost;
+
+            state.fishedCount++;
+
+            // Weather & Float Miss Logic
+            if ((state.weather === 'WINDY' || state.weather === 'STORM') && float?.id === 'float_reed') {
+                if (Math.random() < 0.5) {
+                    addLog('【空竿】风太大，芦苇漂乱舞，提了个寂寞。');
+                    state.sanity -= 5;
+                    return; 
+                }
+            }
+
+            // Night Penalty Check
+            if (state.weather === 'NIGHT' && float?.id !== 'float_electric') {
+                 if (Math.random() < 0.6) {
+                     addLog('【看不清】太黑了，完全看不清漂相！');
+                     return;
+                 }
+            }
+
+            let loops = 1;
+            if (state.inventory.includes('gold_disgorger')) loops = 2;
+            if (state.inventory.includes('bait_potion')) loops = 2; 
+
+            let totalWeight = 0;
+
+            for(let i=0; i<loops; i++) {
+                // Potion Risk
+                if (state.inventory.includes('bait_potion') && Math.random() < 0.2) {
+                    addLog('小药烧手！体力-10，鱼群惊散！');
+                    state.stamina -= 10;
+                    continue;
+                }
+
+                // Grain Logic: Slow start
+                if (state.inventory.includes('bait_grain') && state.stage <= 3) {
+                    addLog('窝料还没发窝...');
+                    continue;
+                }
+
+                let isSmall = Math.random() > 0.5;
+                
+                // Heavy Chum Effect
+                if (state.heavyChum) {
+                    if (Math.random() < 0.3) isSmall = false; 
+                }
+                
+                // Grandpa Buff
+                if (state.flags.grandpaBuff) {
+                    if (Math.random() < 0.2) isSmall = false; 
+                }
+
+                // Line Modifiers (Small Fish Rate)
+                if (line?.id === 'line_08_thin') {
+                    if (Math.random() < 0.75) isSmall = true; // +40% approx
+                }
+                if (line?.id === 'line_80_pe') {
+                    isSmall = false; // No small fish
+                    if (Math.random() < 0.3) { 
+                        addLog('线组太粗，鱼不敢吃钩...');
+                        continue; 
+                    }
+                }
+                // Float Modifiers (Scare)
+                if (float?.id === 'float_electric') {
+                    if (Math.random() < 0.2) {
+                         addLog('电子漂太亮，大鱼被吓跑了。');
+                         continue;
+                    }
+                }
+
+                if (state.stage === 1 && !state.flags.firstCatch) {
+                    isBonus = true; state.flags.firstCatch = true; addLog('新手保护期生效！');
+                }
+
+                let weight = 0;
+                if (state.inventory.includes('broken_net') && (isBonus || !isSmall) && Math.random() < 0.3) {
+                    state.flags.duckFlew = true; addLog('哎呀！网破了！大鱼跑了！'); recordFunny('大鱼到网口因为网破了跑了。'); continue;
+                }
+
+                if (isBonus || !isSmall) {
+                    // Big Fish
+                    // Reduced base weight for scarcity
+                    weight = 0.5 + Math.random() * 2; // Normal big: 0.5-2.5kg
+                    
+                    // Monster Chance (Low but impactful)
+                    // Base chance 2%, +1% if lucky items
+                    let monsterChance = 0.02; 
+                    if (state.inventory.includes('gold_disgorger')) monsterChance += 0.01;
+                    
+                    if (Math.random() < monsterChance) {
+                        weight = 5.1 + Math.random() * 10; // Monster: 5.1-15kg
+                    } else if (state.inventory.includes('gold_disgorger') && Math.random() < 0.05) {
+                        // Rusty Anchor Curse
+                        addLog('钓到了...一个生锈的铁锚？(金色挡针的副作用)');
+                        weight = 0;
+                        state.sanity -= 10;
+                    }
+
+                    if (state.inventory.includes('bait_grain') && state.stage > 8) weight += 1; // Grain bonus reduced
+                    
+                    // 1. Rod Break Check
+                    if (rod && weight > rod.strength && Math.random() < 0.4) {
+                        addLog(`【爆竿】${weight.toFixed(1)}kg大鱼拉断了${rod.name}！`);
+                        state.sanity -= 30;
+                        weight = 0;
+                        // Ideally remove rod, but let's keep it simple for now or implement lose logic
+                    }
+
+                    // 2. Line Snap Check
+                    if (line && weight > line.maxLoad) {
+                        addLog(`【切线】${weight.toFixed(1)}kg大鱼秒切${line.name}！`);
+                        weight = 0;
+                        state.sanity -= 20;
+                        unlockAchievement('line_breaker');
+                    }
+
+                    // Monster Trigger
+                if (weight > 5.0) {
+                    state.flags.hasBigFish = true; // Mark as big fish
+                    triggerMonsterMinigame(weight);
+                    // Skip adding weight now, wait for minigame result
+                    weight = 0; 
+                } else if (weight > state.maxFishWeight) {
+                    state.maxFishWeight = weight; // Update max record for normal fish
+                }
+
+                } else {
+                    // Small Fish (Scarcity: 0.2 - 0.8kg)
+                    weight = 0.2 + Math.random() * 0.6;
+                    if (state.inventory.includes('bait_red_worms') && Math.random() < 0.3) {
+                        addLog('钓上来一只破鞋...');
+                        weight = 0;
+                        state.flags.pureFish = false;
+                        recordFunny('钓上来一只臭水鞋。');
+                    }
+                }
+
+                if (weight > 0) state.flags.caughtAnything = true;
+                totalWeight += weight;
+            }
+            
+            // Survivalist Check
+            if (state.usingWorms && totalWeight > 0) {
+                unlockAchievement('survivalist');
+            }
+            // Reset temp flags
+            state.heavyChum = false;
+            state.usingWorms = false;
+
+            if(totalWeight > 0) {
+                 state.catchWeight += totalWeight;
+                 feedback.value = `获得渔获 ${totalWeight.toFixed(1)}kg`;
+            } else if (!monsterMinigame.active) {
+                 // Only show empty if no minigame triggered
+            }
+        };
+
+        const triggerMonsterMinigame = (weight) => {
+            monsterMinigame.active = true;
+            monsterMinigame.cursor = 50;
+            monsterMinigame.velocity = 0;
+            monsterMinigame.timeLeft = 5;
+            monsterMinigame.targetWeight = weight;
+            
+            // Start Loop
+            monsterMinigame.interval = setInterval(() => {
+                // Physics
+                monsterMinigame.velocity += (Math.random() - 0.5) * 4; // Random turbulence
+                monsterMinigame.cursor += monsterMinigame.velocity;
+                
+                // Bounds bounce
+                if (monsterMinigame.cursor < 0 || monsterMinigame.cursor > 100) {
+                    monsterMinigame.velocity *= -0.8;
+                    monsterMinigame.cursor = Math.max(0, Math.min(100, monsterMinigame.cursor));
+                }
+
+                monsterMinigame.timeLeft -= 0.1;
+
+                if (monsterMinigame.timeLeft <= 0) {
+                    endMonsterMinigame(true);
+                }
+            }, 100);
+        };
+
+        const monsterAction = (dir) => {
+            if (dir === 'left') monsterMinigame.velocity -= 5;
+            if (dir === 'right') monsterMinigame.velocity += 5;
+        };
+
+        const endMonsterMinigame = (success) => {
+            clearInterval(monsterMinigame.interval);
+            monsterMinigame.active = false;
+            
+            // Check final position
+            if (success) {
+                // Check if cursor is in safe zone (35-65)
+                if (monsterMinigame.cursor >= 35 && monsterMinigame.cursor <= 65) {
+                    // Success!
+                    triggerMonsterEvent(monsterMinigame.targetWeight);
+                } else {
+                    // Fail
+                    addLog('【跑鱼】大鱼发力，脱钩而去！');
+                    state.sanity -= 30;
+                }
+            }
+        };
+
+        const triggerMonsterEvent = (weight) => {
+            // Update max weight record
+            if (weight > state.maxFishWeight) state.maxFishWeight = weight;
+            state.flags.hasBigFish = true;
+
+            // Visuals
+            triggerPhoto(weight);
+            state.catchWeight += weight;
+            
+            // Trigger Event
+            setTimeout(() => {
+                const eventType = Math.random() > 0.5 ? 'village_watch' : 'victory_parade';
+                currentEvent.value = {
+                    id: eventType,
+                    title: eventType === 'village_watch' ? '全村围观' : '凯旋游街',
+                    text: eventType === 'village_watch' 
+                        ? `你刚把${weight.toFixed(1)}kg巨物拖上岸，方圆两公里的钓友、外卖小哥、放羊大爷都围了过来。`
+                        : `由于${weight.toFixed(1)}kg鱼太大，鱼护塞不下。你决定把它绑在车后座。`,
+                    choices: eventType === 'village_watch' 
+                        ? [
+                            { text: '递烟吹嘘 (需华子)', type: 'monster_brag', req: 'huazi' },
+                            { text: '云淡风轻', type: 'monster_humble' }
+                          ]
+                        : [
+                            { text: '绕路去菜市场', type: 'monster_market', cost: { type: 'stamina', val: 20 } },
+                            { text: '低调回家', type: 'monster_home' }
+                          ]
+                };
+            }, 3000); // Wait for photo
+        };
+
+        const triggerPhoto = (weight) => {
+            monsterPhoto.active = true;
+            monsterPhoto.weight = weight.toFixed(1);
+            monsterPhoto.fishName = '传说巨物';
+            monsterPhoto.danmaku = ['卧槽！', '666', '这是人干的事？', '大师求带', '这也太大了吧'];
+        };
+
+        const closePhoto = () => {
+            monsterPhoto.active = false;
+        };
+
+        const triggerEndGame = () => {
+            // FIX: Market condition: Only if catchWeight is 0 (Air Force) AND has money
+            if (state.catchWeight === 0 && state.money >= 100 && !state.flags.marketParade) { 
+                state.phase = 'MARKET_INTRO'; // New Intro Phase
+                // No need to set marketText here, UI will handle intro
+            } else {
+                endGame();
+            }
+        };
+
+        const enterMarket = () => {
+            state.phase = 'MARKET';
+        };
+
+        const getRealProb = (item) => {
+            let p = item.prob;
+            if (state.inventory.includes('huazi')) {
+                p -= 0.2;
+            }
+            if (state.inventory.includes('aux_ice_bucket')) {
+                p -= 0.15;
+            }
+            return Math.max(0, p);
+        };
+
+        const buyFish = (item) => {
+            if (state.money < item.price) return;
+            state.money -= item.price;
+            
+            // Check Scam
+            const bustProb = getRealProb(item);
+            
+            if (Math.random() < bustProb) {
+                // Busted
+                state.flags.marketBusted = true;
+                state.catchWeight = 0;
+                
+                const reasons = [
+                    "老婆看着鱼嘴里的鱼钩痕迹，陷入了沉思：‘现在的鱼，上钩前还自带超市的标签签吗？’",
+                    "你妈接过鱼：‘儿啊，这鱼肚子里怎么还有一股冷库的冰渣味？’",
+                    "邻居老王路过：‘哟，这品种咱这水库可没见过，是从太平洋游过来的吧？’"
+                ];
+                marketText.value = reasons[Math.floor(Math.random() * reasons.length)];
+                recordFunny('试图在菜市场买鱼冒充战绩，被家人当场识破。');
+            } else {
+                // Success
+                state.flags.marketSuccess = true;
+                state.catchWeight += item.weight;
+            }
+            
+            endGame();
+        };
+
+        const leaveMarket = () => {
+            endGame();
+        };
+
+        const endGame = () => {
+            state.phase = 'ENDED';
+            checkEndGameAchievements();
+        };
+
+        const endingTitle = computed(() => {
+            if (state.flags.hasBigFish || state.flags.marketSuccess || state.flags.marketParade) return '荣耀时刻';
+            if (state.flags.marketBusted) return '家庭弟位';
+            if (state.stamina > 0 && state.sanity > 0) return '遗憾收竿';
+            return '道心破碎';
+        });
+
+        const endingIcon = computed(() => {
+            if (state.flags.marketBusted) return '🙇';
+            
+            const hasBigFish = state.catchWeight >= 5.0 || state.flags.boughtFish || state.flags.marketSuccess;
+            if (state.stamina <= 0) {
+                 return hasBigFish ? '🏆' : '🚑';
+            }
+
+            if (state.sanity <= 0) return '💔';
+            if (hasBigFish) return '🏆';
+            if (state.catchWeight > 0) return '🐟';
+            return '🪣';
+        });
+
+        const shareText = computed(() => {
+            if (!state.inventory.includes('powerbank') && Math.random() > 0.5) return "手机没电了，无法分享战绩...";
+            const place = '神秘水库';
+            let result = '';
+            
+            const hasBigFish = state.catchWeight >= 5.0 || state.flags.boughtFish || state.flags.marketSuccess;
+
+            // Monster Override
+            if (state.flags.marketParade) {
+                 return `我今天在${place}斩获传说巨物一条！绑在车后座路过菜市场时，那里的鱼贩子都看傻了...`;
+            }
+            if (hasAchievement('local_king')) {
+                 return `我今天在${place}钓到巨物，全村人都来围观了，不得不给每人发了一根华子。`;
+            }
+
+            if (state.flags.marketBusted) { 
+                result = '今天去菜市场进货被抓了个现行...'; 
+            } else if (state.stamina <= 0 && hasBigFish) {
+                result = '你由于脱力晕倒在水库边，但双手依然死死抱着那条 10 斤的大草鱼。路过的钓友纷纷投来敬佩的目光。';
+                return `我是钓鱼佬，今天我在${place}，${result}`;
+            } else if (state.stamina <= 0 && !hasBigFish) {
+                result = '鱼没上来，人上去了。';
+            } else if (hasBigFish) {
+                result = '这一杆，我吹一辈子！';
+            } else if (state.catchWeight > 0) {
+                 result = `虽无巨物，但也斩获 ${state.catchWeight.toFixed(1)}kg 鱼！`; 
+            } else {
+                 result = '鱼没钓到，倒是把身体锻炼好了。';
+            }
+
+            return `我是钓鱼佬，今天我在${place}，${result}`;
+        });
+
+        const generatePoster = () => {
+            const el = document.getElementById('license-node');
+            if(!el) return;
+            html2canvas(el, { backgroundColor: null }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `fishing-license-${Date.now()}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+            });
+        };
+
+        const resetGame = () => {
+            state.phase = 'START';
+        };
+
+        return {
+            state, CATEGORIES, ACHIEVEMENTS, activeTab, filteredItems, currentEvent, MAX_STAGES, MARKET_ITEMS,
+            startGame, startJourney, toggleItem, handleChoice, feedback, logContainer, canAfford,
+            endingTitle, endingIcon, newAchievements, shareText, resetGame, isDiscounted,
+            activeToasts, showTrophyRoom, unlockedCount, hasAchievement, showAchDetail, selectedAch,
+            currentDate, highestHonor, stampText, stampColor, generatePoster,
+            doHeavyChum, doTasteBait, isLowBait, randomFunnyMoment, marketText,
+            triggerEndGame, buyFish, leaveMarket, getRealProb,
+            currentWeight, currentStats, compatibilityWarning, canStart, enterMarket
+        };
+    }
+}).mount('#app');
+</script>
+</body>
+</html>
